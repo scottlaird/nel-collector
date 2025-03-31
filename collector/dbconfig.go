@@ -7,10 +7,43 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+var (
+	insertedRows = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "nel_collector_inserted_rows",
+		Help: "The number of rows inserted into the database",
+	})
+	dbErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "nel_collector_db_errors",
+		Help: "The number of database errors",
+	})
+	dbMarshalErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "nel_collector_db_marshal_errors",
+		Help: "The number of errors that occured when marshaling JSON data for the DB",
+	})
+	insertLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "nel_collector_insert_latency_seconds",
+		Help: "A histogram of insert latency",
+		// Create buckets from 0.01ms to 10 seconds, with 10 steps per order of magnitude,
+		// or roughly a 25% jump between buckets.
+		Buckets: prometheus.ExponentialBucketsRange(0.00001, 10.000, 61),
+	})
+	txLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "nel_collector_transaction_latency_seconds",
+		Help: "A histogram of transaction latency",
+		// Create buckets from 1ms to 10 seconds, with 10 steps per order of magnitude,
+		// or roughly a 25% jump between buckets.
+		Buckets: prometheus.ExponentialBucketsRange(0.001, 10.000, 41),
+	})
 )
 
 type DBConfig interface {
@@ -52,6 +85,7 @@ func (db *SqlDriver) Connect(ctx context.Context) error {
 
 // Write writes a slice of NelRecords into the database.
 func (db *SqlDriver) Write(ctx context.Context, records []NelRecord) error {
+	txstart := time.Now()
 	//slog.Info("db.Write", "record", n)  // TODO: put behind a flag
 
 	// the table name comes from a command-line flag, so I'm
@@ -74,6 +108,7 @@ func (db *SqlDriver) Write(ctx context.Context, records []NelRecord) error {
 	// Start a transaction
 	tx, err := db.pool.BeginTx(ctx, nil)
 	if err != nil {
+		dbErrors.Inc()
 		slog.Error("Unable to begin transaction", "err", err)
 		return err
 	}
@@ -81,26 +116,31 @@ func (db *SqlDriver) Write(ctx context.Context, records []NelRecord) error {
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
+		dbErrors.Inc()
 		slog.Error("Unable to prepare statement", "error", err)
 		return err
 	}
 
 	for _, record := range records {
+		insertstart := time.Now()
 		// Marshal the 3 JSON columns into strings.  For some DBs,
 		// it's possible that using a JSON columntype would make this
 		// less useful; that's a matter for further research.
 		req_headers, err := json.Marshal(record.RequestHeaders)
 		if err != nil {
+			dbMarshalErrors.Inc()
 			slog.Error("Unable to marshal RequestHeaders", "error", err)
 			return err
 		}
 		resp_headers, err := json.Marshal(record.ResponseHeaders)
 		if err != nil {
+			dbMarshalErrors.Inc()
 			slog.Error("Unable to marshal ResponseHeaders", "error", err)
 			return err
 		}
 		add_body, err := json.Marshal(record.AdditionalBody)
 		if err != nil {
+			dbMarshalErrors.Inc()
 			slog.Error("Unable to marshal AdditionalBody", "error", err)
 			return err
 		}
@@ -113,16 +153,23 @@ func (db *SqlDriver) Write(ctx context.Context, records []NelRecord) error {
 			record.Referrer, record.Method, record.StatusCode, string(req_headers),
 			string(resp_headers), string(add_body))
 		if err != nil {
+			dbErrors.Inc()
 			return fmt.Errorf("Unable to insert: %v", err)
 		}
+		insertedRows.Inc() // *Could* be inaccurate due to commit failure below, but this seems better than the alternatives.
+		elapsed := time.Since(insertstart)
+		insertLatency.Observe(elapsed.Seconds())
 	}
 
 	err = tx.Commit()
 	if err != nil {
+		dbErrors.Inc()
 		slog.Error("Failed to commit transaction", "error", err)
 		return err
 	}
 	stmt.Close()
+	elapsed := time.Since(txstart)
+	txLatency.Observe(elapsed.Seconds())
 
 	return nil
 }

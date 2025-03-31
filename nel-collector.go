@@ -25,6 +25,7 @@ var (
 	dbTable             = flag.String("db_table", "", "Name of the database table to write to.")
 	listenAddr          = flag.String("listen", ":8080", "Port (and optionally host) to listen for HTTP requests on.")
 	maxMsgSize          = flag.Int("max_message_size", 1<<20, "Maximum number of bytes allowed in a NEL POST request.")
+	metricsListenAddr   = flag.String("metrics_listen", ":18080", "Port (and optionally host) to serve Prometheus metrics")
 	numberOfProxies     = flag.Int("number_of_proxies", 0, "Number of HTTP proxies to expect; this controls how client IPs are extracted from X-Forwarded-For headers.")
 	readTimeout         = flag.Int("read_timeout", 10, "Seconds to wait for HTTP reads to finish,")
 	trace               = flag.Bool("trace", false, "Enable otel tracing.")
@@ -69,6 +70,17 @@ func main() {
 		}
 		defer func() {
 			tp.Shutdown(context.Background())
+		}()
+	}
+
+	// Start metrics listener iff --metrics_listen is not empty
+	if *metricsListenAddr != "" {
+		go func() {
+			err := collector.RunMetricsServer(*metricsListenAddr)
+			if err != nil {
+				slog.Error("Unable to start /metrics server on %s: %v", *metricsListenAddr, err)
+				os.Exit(1)
+			}
 		}()
 	}
 
