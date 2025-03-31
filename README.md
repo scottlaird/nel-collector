@@ -26,15 +26,16 @@ drivers.
 
 ### Creating your database schema
 
-See the [schema/](schema/) subdirectory.  If you don't see your DB
+See the [schemas/](schemas/) subdirectory.  If you don't see your DB
 there, then file an issue and I'll see what I can do to help.
 
 ## Running
 
 Flags:
 
-- `-db_table=<tablename>`.  *Required*.  Specify the name of the database table
-  that `nel-collector` will write into.  This must exist already.
+- `-db_table=<tablename>`.  **Required**.  Specify the name of the
+  database table that `nel-collector` will write into.  This must
+  exist already.
 - `-listen=[<host>]:<port>`.  Specify which host and port
   `nel-collector` will use to listen for HTTP traffic.  Defaults to
   `:8080`.
