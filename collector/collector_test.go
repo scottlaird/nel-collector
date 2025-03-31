@@ -19,7 +19,7 @@ func TestParseString_Simple(t *testing.T) {
                          "type": "network-error",
                          "url": "https://example.com/"
                         }]`)
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:  0,
 		Type: "network-error",
 		URL:  "https://example.com/",
@@ -57,7 +57,7 @@ func TestParseString_Example3(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://www.example.com/",
@@ -104,7 +104,7 @@ func TestParseString_Example4(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://widget.com/thing.js",
@@ -150,7 +150,7 @@ func TestParseString_Example6(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://new-subdomain.example.com/",
@@ -197,7 +197,7 @@ func TestParseString_Example8(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
@@ -246,7 +246,7 @@ func TestParseString_Example9(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
@@ -295,7 +295,7 @@ func TestParseString_Example10(t *testing.T) {
   }
 }]`)
 
-	want := []NelRecord{NelRecord{
+	want := []NelRecord{{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
