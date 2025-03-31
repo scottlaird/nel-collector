@@ -9,3 +9,65 @@ This mostly only works with Chrome-family browsers today; Firefox has
 support but it's disabled by default.
 
 This is still a work in progress.
+
+## Installing
+
+You'll need [Go](https://go.dev) 1.21 or higher installed, then just run
+
+```
+$ go install github.com/scottlaird/nel-collector@latest
+```
+
+This should download and compile the collector code and leave a
+`nel-compiler` binary in your Go bin directory, usually `~/go/bin`.
+
+At the moment, it's compiled with Postgresql, MySQL, and Clickhouse
+drivers.
+
+### Creating your database schema
+
+See the [schema/](schema/) subdirectory.  If you don't see your DB
+there, then file an issue and I'll see what I can do to help.
+
+## Running
+
+Flags:
+
+- `-db_table=<tablename>`.  *Required*.  Specify the name of the database table
+  that `nel-collector` will write into.  This must exist already.
+- `-listen=[<host>]:<port>`.  Specify which host and port
+  `nel-collector` will use to listen for HTTP traffic.  Defaults to
+  `:8080`.
+- `-max_message_size=<bytes>`.  Limit the maximum NEL message allowed.
+  Defaults to 1 MB.
+- `-number_of_proxies=<count>`.  Tells `nel-collector` to extract
+  client IPs from the `X-Forwarded-For` header, using the nth header
+  from the right.  The default value is 0, which makes `nel-collector`
+  ignore the `X-Forwarded-For` header.  Setting it to `1` tells it to
+  use the first forwarded IP, `2` uses the second forwarded IP, and so
+  forth.
+- `-allow_additional_body`.  By default, `nel-collector` only logs
+  known fields from the `body` field of the NEL message.  If this flag
+  is enabled then unknown fields will be added to the
+  `additional_body` column in the database.
+- `-read_timeout=<seconds>`, `-write_timeout=<seconds>`.  Set HTTP
+  read and write timeouts.  Defaults to 10s each.
+
+Environment variables:
+
+- `DB_DRIVER=<driver>`.  Sets the database driver to use.  Currently
+  valid settings are `clickhouse`, `mysql` and `pgx` (for Postgresql).
+- `DBN=<value>`.  Specifies how to connect to your database.  TBD.
+
+### Logging
+
+`nel-collector` should log errors to STDOUT.
+
+### Tracing
+
+`nel-collector` has partial support for OpenTelemetry tracing.  TBD.
+
+
+### systemd unit
+
+I should include a systemd unit file here.  TBD.
