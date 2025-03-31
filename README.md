@@ -84,4 +84,7 @@ your collector.
 
 ### systemd unit
 
-I should include a systemd unit file here.  TBD.
+There is a systemd unit file for `nel-collector` in
+[nel-collector.service](nel-collector.service).  It will require minor
+modifications to work in your environment, but it should be a good
+starting point.
