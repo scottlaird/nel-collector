@@ -5,11 +5,11 @@ Description=NEL collection agent
 RestartSec=5
 Restart=always
 Type=simple
-ExecStart=/usr/local/bin/nel-collector --db_table=nellog --trace
-Environment="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel:4317"
+ExecStart=/usr/local/bin/nel-collector --db_table=nellog --trace   # Change table name and other flags as needed
+Environment="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel:4317"  # Point to your otel collector, if --trace
 Environment="OTEL_SERVICE_NAME=nel-collector"
-Environment="DB_DRIVER=clickhouse"
-Environment="DSN=clickhouse://default@localhost:9000/default"
+Environment="DB_DRIVER=clickhouse"                                 # Update
+Environment="DSN=clickhouse://default@localhost:9000/default"      # Update
 
 [Install]
 WantedBy=multi-user.target
