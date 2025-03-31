@@ -58,7 +58,15 @@ Environment variables:
 
 - `DB_DRIVER=<driver>`.  Sets the database driver to use.  Currently
   valid settings are `clickhouse`, `mysql` and `pgx` (for Postgresql).
-- `DBN=<value>`.  Specifies how to connect to your database.  TBD.
+- `DBN=<value>`.  Specifies how to connect to your database.
+    - For Clickhouse, this should look like
+      `clickhouse://<user>:<pass>@<host>:9000/<dbname>"`.  See
+      [docs](https://github.com/ClickHouse/clickhouse-go?tab=readme-ov-file#dsn)
+    - For Postgres: `user=<user> password=<password> host=<hostname>
+      port=<port> database=<database> sslmode=disable`.
+    - For MySQL:
+      `[tcp:<addr>|unix:<sockpath>]*<dbname>/<user>/<password>` or
+      just `<dbname>/<user>/<password>`.
 
 ### Logging
 
