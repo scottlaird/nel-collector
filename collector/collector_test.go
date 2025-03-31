@@ -7,23 +7,23 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func compareNelRecord(t *testing.T, got, want NelRecord) {
+func compareNelRecord(t *testing.T, got, want []NelRecord) {
 	if diff := cmp.Diff(want, got, cmpopts.IgnoreFields(NelRecord{}, "Timestamp"), cmpopts.IgnoreUnexported(NelRecord{})); diff != "" {
 		t.Errorf("NelRecord mismatch (-want +got):\n%s", diff)
 	}
 }
 
 func TestParseString_Simple(t *testing.T) {
-	msg := []byte(`{
+	msg := []byte(`[{
                          "age": 0,
                          "type": "network-error",
                          "url": "https://example.com/"
-                        }`)
-	want := NelRecord{
+                        }]`)
+	want := []NelRecord{NelRecord{
 		Age:  0,
 		Type: "network-error",
 		URL:  "https://example.com/",
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestParseString_Simple(t *testing.T) {
 // https://w3c.github.io/network-error-logging/#sample-network-error-reports
 func TestParseString_Example3(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://www.example.com/",
@@ -55,9 +55,9 @@ func TestParseString_Example3(t *testing.T) {
     "phase": "application",
     "type": "http.protocol.error"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://www.example.com/",
@@ -73,7 +73,7 @@ func TestParseString_Example3(t *testing.T) {
 		RequestHeaders:   map[string]any{},
 		ResponseHeaders:  map[string]any{},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -85,7 +85,7 @@ func TestParseString_Example3(t *testing.T) {
 
 func TestParseString_Example4(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://widget.com/thing.js",
@@ -102,9 +102,9 @@ func TestParseString_Example4(t *testing.T) {
     "phase": "dns",
     "type": "dns.name_not_resolved"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://widget.com/thing.js",
@@ -120,7 +120,7 @@ func TestParseString_Example4(t *testing.T) {
 		RequestHeaders:   map[string]any{},
 		ResponseHeaders:  map[string]any{},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -132,7 +132,7 @@ func TestParseString_Example4(t *testing.T) {
 
 func TestParseString_Example6(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://new-subdomain.example.com/",
@@ -148,9 +148,9 @@ func TestParseString_Example6(t *testing.T) {
     "phase": "dns",
     "type": "dns.name_not_resolved"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://new-subdomain.example.com/",
@@ -165,7 +165,7 @@ func TestParseString_Example6(t *testing.T) {
 		RequestHeaders:   map[string]any{},
 		ResponseHeaders:  map[string]any{},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -177,7 +177,7 @@ func TestParseString_Example6(t *testing.T) {
 
 func TestParseString_Example8(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://example.com/",
@@ -195,9 +195,9 @@ func TestParseString_Example8(t *testing.T) {
     "phase": "application",
     "type": "ok"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
@@ -212,7 +212,7 @@ func TestParseString_Example8(t *testing.T) {
 		RequestHeaders:   map[string]any{},
 		ResponseHeaders:  map[string]any{"ETag": []any{string("01234abcd")}},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -224,7 +224,7 @@ func TestParseString_Example8(t *testing.T) {
 
 func TestParseString_Example9(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://example.com/",
@@ -244,9 +244,9 @@ func TestParseString_Example9(t *testing.T) {
     "phase": "application",
     "type": "ok"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
@@ -261,7 +261,7 @@ func TestParseString_Example9(t *testing.T) {
 		RequestHeaders:   map[string]any{"If-None-Match": []any{string("01234abcd")}},
 		ResponseHeaders:  map[string]any{"ETag": []any{string("01234abcd")}},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {
@@ -273,7 +273,7 @@ func TestParseString_Example9(t *testing.T) {
 
 func TestParseString_Example10(t *testing.T) {
 	msg := []byte(`
-{
+[{
   "age": 0,
   "type": "network-error",
   "url": "https://example.com/",
@@ -293,9 +293,9 @@ func TestParseString_Example10(t *testing.T) {
     "phase": "application",
     "type": "ok"
   }
-}`)
+}]`)
 
-	want := NelRecord{
+	want := []NelRecord{NelRecord{
 		Age:              0,
 		Type:             "network-error",
 		URL:              "https://example.com/",
@@ -310,7 +310,7 @@ func TestParseString_Example10(t *testing.T) {
 		RequestHeaders:   map[string]any{"If-None-Match": []any{string("01234abcd")}},
 		ResponseHeaders:  map[string]any{"ETag": []any{string("56789ef01")}},
 		AdditionalBody:   map[string]any{},
-	}
+	}}
 
 	n, err := ParseMessage(msg)
 	if err != nil {

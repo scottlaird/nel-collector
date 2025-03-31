@@ -25,36 +25,41 @@ func getAndClear[T any](np NelPostFormat, name string, val *T) {
 // into the main NelRecord object.  Any additional `body` records that
 // are left over are added to the `AdditionalBody` field in the
 // NelRecord.
-func ParseMessage(msg []byte) (NelRecord, error) {
-	np := NelPostFormat{}
-	err := json.Unmarshal(msg, &np)
+func ParseMessage(msg []byte) ([]NelRecord, error) {
+	msgs := []NelPostFormat{}
+	err := json.Unmarshal(msg, &msgs)
 
-	n := NelRecord{
-		Timestamp: time.Now(),
-		Age:       np.Age,
-		Type:      np.Type,
-		URL:       np.URL,
+	records := []NelRecord{}
+
+	for _, np := range msgs {
+		n := NelRecord{
+			Timestamp: time.Now(),
+			Age:       np.Age,
+			Type:      np.Type,
+			URL:       np.URL,
+		}
+
+		getAndClear(np, "sampling_fraction", &n.SamplingFraction)
+		getAndClear(np, "elapsed_time", &n.ElapsedTime)
+		getAndClear(np, "phase", &n.Phase)
+		getAndClear(np, "type", &n.BodyType)
+		getAndClear(np, "server_ip", &n.ServerIP)
+		getAndClear(np, "protocol", &n.Protocol)
+		getAndClear(np, "referrer", &n.Referrer)
+		getAndClear(np, "method", &n.Method)
+		getAndClear(np, "request_headers", &n.RequestHeaders)
+		getAndClear(np, "response_headers", &n.ResponseHeaders)
+
+		// Status code is an int, but map[string]any from JSON will
+		// always see it as a float.
+		getAndClear(np, "status_code", &n.statusCodeFloat)
+		n.StatusCode = int(n.statusCodeFloat)
+
+		n.AdditionalBody = np.Body
+		records = append(records, n)
 	}
 
-	getAndClear(np, "sampling_fraction", &n.SamplingFraction)
-	getAndClear(np, "elapsed_time", &n.ElapsedTime)
-	getAndClear(np, "phase", &n.Phase)
-	getAndClear(np, "type", &n.BodyType)
-	getAndClear(np, "server_ip", &n.ServerIP)
-	getAndClear(np, "protocol", &n.Protocol)
-	getAndClear(np, "referrer", &n.Referrer)
-	getAndClear(np, "method", &n.Method)
-	getAndClear(np, "request_headers", &n.RequestHeaders)
-	getAndClear(np, "response_headers", &n.ResponseHeaders)
-
-	// Status code is an int, but map[string]any from JSON will
-	// always see it as a float.
-	getAndClear(np, "status_code", &n.statusCodeFloat)
-	n.StatusCode = int(n.statusCodeFloat)
-
-	n.AdditionalBody = np.Body
-
-	return n, err
+	return records, err
 }
 
 // NewNELHandler creates a new NELHandler and tells it which database
