@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -70,24 +71,25 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var clientIP string
+	if nh.NumberOfProxies > 0 {
+		ips := req.Header.Get("X-Forwarded-For")
+		addresses := strings.Split(ips, ",")
+		if ips != "" && len(addresses) >= nh.NumberOfProxies {
+			clientIP = strings.TrimSpace(addresses[len(addresses)-nh.NumberOfProxies])
+		}
+	}
+	hostname, _ := os.Hostname()
+	outRecords := []NelRecord{}
+
 	for _, record := range records {
 		h, _, err := net.SplitHostPort(req.RemoteAddr)
 		if err == nil {
 			record.ClientIP = h
 		}
 
-		hostname, err := os.Hostname()
-		if err == nil {
-			record.Hostname = hostname // which machine recorded this log.
-		}
-
-		if nh.NumberOfProxies > 0 {
-			ips := req.Header.Get("X-Forwarded-For")
-			addresses := strings.Split(ips, ",")
-			if ips != "" && len(addresses) >= nh.NumberOfProxies {
-				record.ClientIP = strings.TrimSpace(addresses[len(addresses)-nh.NumberOfProxies])
-			}
-		}
+		record.ClientIP = clientIP
+		record.Hostname = hostname
 
 		// Strip the `AdditionalBody` field unless it's explicitly
 		// allowed by flags.
@@ -95,16 +97,18 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 			record.AdditionalBody = nil
 		}
 
-		span.AddEvent("Writing to DB")
+		outRecords = append(outRecords, record)
+	}
 
-		err = nh.DB.Write(ctx, record)
-		if err != nil {
-			slog.Error("Unable to write to DB", "error", err)
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "DB error")
-			http.Error(resp, "DB error", 500)
-			return
-		}
+	span.AddEvent(fmt.Sprintf("Writing %d records to DB", len(outRecords)))
+
+	err = nh.DB.Write(ctx, outRecords)
+	if err != nil {
+		slog.Error("Unable to write to DB", "error", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "DB error")
+		http.Error(resp, "DB error", 500)
+		return
 	}
 
 	io.WriteString(resp, "OK\n")
