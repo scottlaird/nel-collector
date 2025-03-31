@@ -52,7 +52,7 @@ func (db *SqlDriver) Connect(ctx context.Context) error {
 
 // Write writes a NelRecord into the database.
 func (db *SqlDriver) Write(ctx context.Context, n NelRecord) error {
-	slog.Info("db.Write", "record", n)
+	//slog.Info("db.Write", "record", n)  // TODO: put behind a flag
 
 	// the table name comes from a command-line flag, so I'm
 	// relatively okay doing string manipulation on the query
@@ -95,8 +95,8 @@ func (db *SqlDriver) Write(ctx context.Context, n NelRecord) error {
 		n.Timestamp, n.Age, n.Type, n.URL,
 		n.Hostname, n.ClientIP, n.SamplingFraction, n.ElapsedTime,
 		n.Phase, n.BodyType, n.ServerIP, n.Protocol,
-		n.Referrer, n.Method, n.StatusCode, req_headers,
-		resp_headers, add_body)
+		n.Referrer, n.Method, n.StatusCode, string(req_headers),
+		string(resp_headers), string(add_body))
 	if err != nil {
 		return fmt.Errorf("Unable to insert: %v", err)
 	}
