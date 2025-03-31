@@ -8,7 +8,7 @@ metrics from browsers, including HTTP errors and timing metrics.
 This mostly only works with Chrome-family browsers today; Firefox has
 support but it's disabled by default.
 
-This is still a work in progress.
+This is still a work in progress, but it's functional for my uses.
 
 ## Installing
 
@@ -19,7 +19,7 @@ $ go install github.com/scottlaird/nel-collector@latest
 ```
 
 This should download and compile the collector code and leave a
-`nel-compiler` binary in your Go bin directory, usually `~/go/bin`.
+`nel-collector` binary in your Go bin directory, usually `~/go/bin`.
 
 At the moment, it's compiled with Postgresql, MySQL, and Clickhouse
 drivers.
@@ -46,7 +46,10 @@ Flags:
   from the right.  The default value is 0, which makes `nel-collector`
   ignore the `X-Forwarded-For` header.  Setting it to `1` tells it to
   use the first forwarded IP, `2` uses the second forwarded IP, and so
-  forth.
+  forth.  If you're running this behind a reverse proxy/load balancer
+  that uses `X-Forwarded-For` (all of them?), then you'll want to set
+  this so that you can record client IPs and not the load balancers'
+  IPs.
 - `-allow_additional_body`.  By default, `nel-collector` only logs
   known fields from the `body` field of the NEL message.  If this flag
   is enabled then unknown fields will be added to the

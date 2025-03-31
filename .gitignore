@@ -27,3 +27,5 @@ go.work.sum
 *~
 
 nel-collector
+# Added by goreleaser init:
+dist/
