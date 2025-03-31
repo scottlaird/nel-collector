@@ -1,0 +1,15 @@
+[Unit]
+Description=NEL collection agent
+
+[Service]
+RestartSec=5
+Restart=always
+Type=simple
+ExecStart=/usr/local/bin/nel-collector --db_table=nellog --trace
+Environment="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel:4317"
+Environment="OTEL_SERVICE_NAME=nel-collector"
+Environment="DB_DRIVER=clickhouse"
+Environment="DSN=clickhouse://default@localhost:9000/default"
+
+[Install]
+WantedBy=multi-user.target

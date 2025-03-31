@@ -13,7 +13,7 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	stdout "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	oltpgrpc "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -28,12 +28,13 @@ var (
 	numberOfProxies     = flag.Int("number_of_proxies", 0, "Number of HTTP proxies to expect; this controls how client IPs are extracted from X-Forwarded-For headers.")
 	allowAdditionalBody = flag.Bool("allow_additional_body", false, "Retain unknown `body` fields from clients in the `additional_body` database column?")
 	dbTable             = flag.String("db_table", "", "Name of the database table to write to.")
+	trace               = flag.Bool("trace", false, "Enable otel tracing.")
 )
 
 func initTracer() (*sdktrace.TracerProvider, error) {
 	// Create stdout exporter to be able to retrieve
 	// the collected spans.
-	exporter, err := stdout.New(stdout.WithPrettyPrint())
+	exporter, err := oltpgrpc.New(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func initTracer() (*sdktrace.TracerProvider, error) {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName("ExampleService"))),
+		sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL)),
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
@@ -57,17 +58,19 @@ func main() {
 	}
 
 	// Set up otel tracing
-	tp, err := initTracer()
-	if err != nil {
-		slog.Error("Unable to initialize otel tracer", "error", err)
-		os.Exit(1)
+	if *trace {
+		tp, err := initTracer()
+		if err != nil {
+			slog.Error("Unable to initialize otel tracer", "error", err)
+			os.Exit(1)
+		}
+		defer func() {
+			tp.Shutdown(context.Background())
+		}()
 	}
-	defer func() {
-		tp.Shutdown(context.Background())
-	}()
 
 	db := collector.NewSqlDriver(*dbTable)
-	err = db.Connect(context.Background())
+	err := db.Connect(context.Background())
 	if err != nil {
 		slog.Error("Unable to connect to database", "error", err)
 		os.Exit(1)
@@ -77,9 +80,15 @@ func main() {
 	nelHandler.NumberOfProxies = *numberOfProxies
 	nelHandler.MaxBytes = int64(*maxMsgSize)
 
+	var handler http.Handler
+	handler = nelHandler
+	if *trace {
+		handler = otelhttp.NewHandler(nelHandler, "nel")
+	}
+
 	s := &http.Server{
 		Addr:           *listenAddr,
-		Handler:        otelhttp.NewHandler(nelHandler, "foo"),
+		Handler:        handler,
 		ReadTimeout:    time.Duration(*readTimeout) * time.Second,
 		WriteTimeout:   time.Duration(*writeTimeout) * time.Second,
 		MaxHeaderBytes: 1 << 20,

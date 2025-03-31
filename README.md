@@ -53,12 +53,13 @@ Flags:
   `additional_body` column in the database.
 - `-read_timeout=<seconds>`, `-write_timeout=<seconds>`.  Set HTTP
   read and write timeouts.  Defaults to 10s each.
+- `-tracing`.  Enable OpenTelemetry tracing.
 
 Environment variables:
 
 - `DB_DRIVER=<driver>`.  Sets the database driver to use.  Currently
   valid settings are `clickhouse`, `mysql` and `pgx` (for Postgresql).
-- `DBN=<value>`.  Specifies how to connect to your database.
+- `DSN=<value>`.  Specifies how to connect to your database.
     - For Clickhouse, this should look like
       `clickhouse://<user>:<pass>@<host>:9000/<dbname>"`.  See
       [docs](https://github.com/ClickHouse/clickhouse-go?tab=readme-ov-file#dsn)
@@ -74,7 +75,11 @@ Environment variables:
 
 ### Tracing
 
-`nel-collector` has partial support for OpenTelemetry tracing.  TBD.
+`nel-collector` has partial support for OpenTelemetry tracing, enabled
+with `-trace`.  If you don't have an otel collector running on port
+4317 locally, then you'll want to set the
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` environment variable to point to
+your collector.
 
 
 ### systemd unit
