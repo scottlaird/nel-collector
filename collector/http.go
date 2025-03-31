@@ -60,43 +60,45 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	record, err := ParseMessage(body.Bytes())
+	records, err := ParseMessage(body.Bytes())
 	if err != nil {
-		slog.Error("Unable to parse JSON", "error", err)
+		slog.Error("Unable to parse JSON", "error", err, "json", body.Bytes())
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "JSON parse failed")
 		http.Error(resp, "Parse error", 400)
 		return
 	}
 
-	h, _, err := net.SplitHostPort(req.RemoteAddr)
-	if err == nil {
-		record.ClientIP = h
-	}
-
-	if nh.NumberOfProxies > 0 {
-		ips := req.Header.Get("X-Forwarded-For")
-		addresses := strings.Split(ips, ",")
-		if ips != "" && len(addresses) >= nh.NumberOfProxies {
-			record.ClientIP = strings.TrimSpace(addresses[len(addresses)-nh.NumberOfProxies])
+	for _, record := range records {
+		h, _, err := net.SplitHostPort(req.RemoteAddr)
+		if err == nil {
+			record.ClientIP = h
 		}
-	}
 
-	// Strip the `AdditionalBody` field unless it's explicitly
-	// allowed by flags.
-	if !nh.AllowAdditionalBody {
-		record.AdditionalBody = nil
-	}
+		if nh.NumberOfProxies > 0 {
+			ips := req.Header.Get("X-Forwarded-For")
+			addresses := strings.Split(ips, ",")
+			if ips != "" && len(addresses) >= nh.NumberOfProxies {
+				record.ClientIP = strings.TrimSpace(addresses[len(addresses)-nh.NumberOfProxies])
+			}
+		}
 
-	span.AddEvent("Writing to DB")
+		// Strip the `AdditionalBody` field unless it's explicitly
+		// allowed by flags.
+		if !nh.AllowAdditionalBody {
+			record.AdditionalBody = nil
+		}
 
-	err = nh.DB.Write(ctx, record)
-	if err != nil {
-		slog.Error("Unable to write to DB", "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "DB error")
-		http.Error(resp, "DB error", 500)
-		return
+		span.AddEvent("Writing to DB")
+
+		err = nh.DB.Write(ctx, record)
+		if err != nil {
+			slog.Error("Unable to write to DB", "error", err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "DB error")
+			http.Error(resp, "DB error", 500)
+			return
+		}
 	}
 
 	io.WriteString(resp, "OK\n")
