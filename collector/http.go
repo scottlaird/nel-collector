@@ -36,8 +36,6 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent("Received request")
 
-	slog.Info("span.IsRecording", "value", span.IsRecording())
-
 	if req.Method != "POST" {
 		http.Error(resp, "POST required", 405)
 	}
