@@ -12,7 +12,7 @@ CREATE OR REPLACE TABLE nellog (
        `age` UInt64,
        `type` LowCardinality(String),
        `url` String,
-       `hostname` LowCardinality(String),
+       `hostname` LowCardinality(String),  -- the server that runs nel-collector
        `client_ip` String,
        `sampling_fraction` Float32, -- CH doens't like LowCardinality(Float32), unfortunately 
        `elapsed_time` UInt32,  -- Number of milliseconds from the start of the fetch until completion/error

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"go.opentelemetry.io/otel/codes"
@@ -73,6 +74,11 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		h, _, err := net.SplitHostPort(req.RemoteAddr)
 		if err == nil {
 			record.ClientIP = h
+		}
+
+		hostname, err := os.Hostname()
+		if err == nil {
+			record.Hostname = hostname // which machine recorded this log.
 		}
 
 		if nh.NumberOfProxies > 0 {
