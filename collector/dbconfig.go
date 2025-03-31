@@ -14,7 +14,7 @@ import (
 )
 
 type DBConfig interface {
-	Write(context.Context, NelRecord) error
+	Write(context.Context, []NelRecord) error
 	Connect(context.Context) error
 }
 
@@ -50,8 +50,8 @@ func (db *SqlDriver) Connect(ctx context.Context) error {
 	return pool.PingContext(ctx)
 }
 
-// Write writes a NelRecord into the database.
-func (db *SqlDriver) Write(ctx context.Context, n NelRecord) error {
+// Write writes a slice of NelRecords into the database.
+func (db *SqlDriver) Write(ctx context.Context, records []NelRecord) error {
 	//slog.Info("db.Write", "record", n)  // TODO: put behind a flag
 
 	// the table name comes from a command-line flag, so I'm
@@ -71,35 +71,58 @@ func (db *SqlDriver) Write(ctx context.Context, n NelRecord) error {
 		"?, ?, ?, ?, " +
 		"?, ?)"
 
-	// Marshal the 3 JSON columns into strings.  For some DBs,
-	// it's possible that using a JSON columntype would make this
-	// less useful; that's a matter for further research.
-	req_headers, err := json.Marshal(n.RequestHeaders)
+	// Start a transaction
+	tx, err := db.pool.BeginTx(ctx, nil)
 	if err != nil {
-		slog.Error("Unable to marshal RequestHeaders", "error", err)
+		slog.Error("Unable to begin transaction", "err", err)
 		return err
 	}
-	resp_headers, err := json.Marshal(n.ResponseHeaders)
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
-		slog.Error("Unable to marshal ResponseHeaders", "error", err)
-		return err
-	}
-	add_body, err := json.Marshal(n.AdditionalBody)
-	if err != nil {
-		slog.Error("Unable to marshal AdditionalBody", "error", err)
+		slog.Error("Unable to prepare statement", "error", err)
 		return err
 	}
 
-	// ...and actually run the INSERT command.
-	_, err = db.pool.ExecContext(ctx, query,
-		n.Timestamp, n.Age, n.Type, n.URL,
-		n.Hostname, n.ClientIP, n.SamplingFraction, n.ElapsedTime,
-		n.Phase, n.BodyType, n.ServerIP, n.Protocol,
-		n.Referrer, n.Method, n.StatusCode, string(req_headers),
-		string(resp_headers), string(add_body))
-	if err != nil {
-		return fmt.Errorf("Unable to insert: %v", err)
+	for _, record := range records {
+		// Marshal the 3 JSON columns into strings.  For some DBs,
+		// it's possible that using a JSON columntype would make this
+		// less useful; that's a matter for further research.
+		req_headers, err := json.Marshal(record.RequestHeaders)
+		if err != nil {
+			slog.Error("Unable to marshal RequestHeaders", "error", err)
+			return err
+		}
+		resp_headers, err := json.Marshal(record.ResponseHeaders)
+		if err != nil {
+			slog.Error("Unable to marshal ResponseHeaders", "error", err)
+			return err
+		}
+		add_body, err := json.Marshal(record.AdditionalBody)
+		if err != nil {
+			slog.Error("Unable to marshal AdditionalBody", "error", err)
+			return err
+		}
+
+		// ...and actually run the INSERT command.
+		_, err = stmt.ExecContext(ctx,
+			record.Timestamp, record.Age, record.Type, record.URL,
+			record.Hostname, record.ClientIP, record.SamplingFraction, record.ElapsedTime,
+			record.Phase, record.BodyType, record.ServerIP, record.Protocol,
+			record.Referrer, record.Method, record.StatusCode, string(req_headers),
+			string(resp_headers), string(add_body))
+		if err != nil {
+			return fmt.Errorf("Unable to insert: %v", err)
+		}
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		slog.Error("Failed to commit transaction", "error", err)
+		return err
+	}
+	stmt.Close()
 
 	return nil
 }
