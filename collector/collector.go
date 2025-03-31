@@ -19,9 +19,12 @@ func getAndClear[T any](np NelPostFormat, name string, val *T) {
 }
 
 // ParseMessage takes a string from a HTTP POST and turns it into a
-// NelRecord.  It copies known values from the `Body` map in the
-// message into named fields in the NelRecord, leaving unknown fields
-// in `AdditionalBody`
+// NelRecord.  Most of the data in a NEL report lives inside of a JSON
+// `body` object, which isn't strictly great for shoving into most
+// databases, so ParseMessage hoists most known fields from `body` up
+// into the main NelRecord object.  Any additional `body` records that
+// are left over are added to the `AdditionalBody` field in the
+// NelRecord.
 func ParseMessage(msg []byte) (NelRecord, error) {
 	np := NelPostFormat{}
 	err := json.Unmarshal(msg, &np)
@@ -54,6 +57,8 @@ func ParseMessage(msg []byte) (NelRecord, error) {
 	return n, err
 }
 
+// NewNELHandler creates a new NELHandler and tells it which database
+// to use.
 func NewNELHandler(db DBConfig) *NELHandler {
 	return &NELHandler{DB: db}
 }

@@ -14,9 +14,10 @@ import (
 
 // NELHandler is a http.Handler that can be used for serving NEL requests.
 type NELHandler struct {
-	NumberOfProxies int
-	MaxBytes        int64
-	DB              DBConfig
+	NumberOfProxies     int
+	MaxBytes            int64
+	AllowAdditionalBody bool
+	DB                  DBConfig
 }
 
 // MaximumBytes() returns the maximum number of bytes allowed in a
@@ -79,6 +80,12 @@ func (nh *NELHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		if ips != "" && len(addresses) >= nh.NumberOfProxies {
 			record.ClientIP = strings.TrimSpace(addresses[len(addresses)-nh.NumberOfProxies])
 		}
+	}
+
+	// Strip the `AdditionalBody` field unless it's explicitly
+	// allowed by flags.
+	if !nh.AllowAdditionalBody {
+		record.AdditionalBody = nil
 	}
 
 	span.AddEvent("Writing to DB")
