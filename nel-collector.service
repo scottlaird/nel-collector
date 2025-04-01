@@ -2,6 +2,8 @@
 Description=NEL collection agent
 
 [Service]
+DynamicUser=true  # Create a user ID dynamically
+
 RestartSec=5
 Restart=always
 Type=simple
@@ -10,6 +12,32 @@ Environment="OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel:4317"  # Point to yo
 Environment="OTEL_SERVICE_NAME=nel-collector"
 Environment="DB_DRIVER=clickhouse"                                 # Update
 Environment="DSN=clickhouse://default@localhost:9000/default"      # Update
+
+# Security settings.  These are somewhat paranoid, if you see weird
+# problems, then there's a good chance that something here is overly
+# aggressive. 
+PermissionsStartOnly=true
+ReadOnlyDirectories=/
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateUsers=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+CapabilityBoundingSet=CAP_*
+RestrictNamespaces=true
+SystemCallFilter=~@clock @cpu-emulation @debug @module @mount @obsolete @privileged @raw-io @reboot @swap
+RestrictAddressFamilies=AF_INET AF_INET6
+ProtectClock=true
+ProtectKernelLogs=true
+LockPersonality=true
+ProtectHostname=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+UMask=066
 
 [Install]
 WantedBy=multi-user.target
